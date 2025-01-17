@@ -1,0 +1,10 @@
+
+.venv/
+
+chainstory/chainstory/__pycache__/
+
+chainstory/linkapp/__pycache__/
+
+chainstory/linkapp/migrations/__pycache__/
+
+*.sqlite3
