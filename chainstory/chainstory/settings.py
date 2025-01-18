@@ -31,7 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'linkapp',
+    'channels',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,7 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'linkapp'
 ]
+
+ASGI_APPLICATION = 'chainstory.asgi.application'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
