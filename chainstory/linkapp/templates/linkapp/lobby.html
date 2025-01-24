@@ -5,7 +5,7 @@
 </head>
 <body>
     <h1>Let's chat!</h1>
-    <input id="chat-message-input" type="text" size="100">
+    <input id="chat-message-input" type="text" size="30">
     <input id="chat-message-submit" type="button" value="Send">
     <div id="chat-log"></div>
 
@@ -32,8 +32,17 @@
             chatSocket.send(JSON.stringify({
                 'message': message
             }));
-            messageInputDom.value = '';
+            messageInputDom.value = ''; // Clear input field
         };
+
+        // Fetch existing message on page load
+        fetch('/api/chat/messages/')
+            .then(response => response.json())
+            .then(data => {
+                data.messages.forEach(message => {
+                    document.querySelector('#chat-log').innerHTML += (message.content + '<br>');
+                });
+            });
     </script>
 </body>
 </html>
