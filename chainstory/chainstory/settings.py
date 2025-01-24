@@ -16,7 +16,7 @@ import daphne
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-from linkapp.routing import websocket_urlpatterns  # Update with your actual routing file
+from linkapp.routing import websocket_urlpatterns
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -144,3 +144,9 @@ application = ProtocolTypeRouter({
         )
     ),
 })
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
