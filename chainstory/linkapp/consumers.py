@@ -13,11 +13,12 @@ class MyConsumer(AsyncWebsocketConsumer):
         get_messages = sync_to_async(lambda: list(ChatMessage.objects.all()))
         messages = await get_messages()
         
-        # Send existing messages
-        for message in messages:
-            await self.send(text_data=json.dumps({
-                'message': message.content
-            }))
+        # # Send existing messages
+        # for message in messages:
+        #     await self.send(text_data=json.dumps({
+        #         'message': message.content,
+        #         'username': message.username
+        #     }))
 
     async def disconnect(self, close_code):
         # Leave the chat group
@@ -27,24 +28,28 @@ class MyConsumer(AsyncWebsocketConsumer):
         from .models import ChatMessage
         text_data_json = json.loads(text_data)
         message = text_data_json['message']
+        username = text_data_json['username']
 
         # Save message using sync_to_async
         save_message = sync_to_async(ChatMessage.objects.create)
-        await save_message(content=message)
+        await save_message(content=message, username=username)
 
         # Send message to chat group
         await self.channel_layer.group_send(
             "chat",
             {
                 "type": "chat_message",
-                "message": message
+                "message": message,
+                "username": username
             }
         )
 
     async def chat_message(self, event):
         message = event['message']
+        username = event['username']
         await self.send(text_data=json.dumps({
-            'message': message
+            'message': message,
+            'username': username
         }))
 
     async def get_chat_messages(self):
