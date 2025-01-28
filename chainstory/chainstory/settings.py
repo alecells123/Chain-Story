@@ -79,7 +79,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'chainstory.wsgi.application'
+# WSGI_APPLICATION = 'chainstory.wsgi.application'
 
 
 # Database

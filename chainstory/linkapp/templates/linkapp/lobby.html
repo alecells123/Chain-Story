@@ -2,24 +2,83 @@
 <html>
 <head>
     <title>Lobby</title>
+    <style>
+        #chat-log {
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .chat-word {
+            display: inline-block;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+        #username-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
-    <h1>Let's chat!</h1>
+    <div id="username-modal">
+        <div class="modal-content">
+            <h2>Enter your name</h2>
+            <input id="username-input" type="text" size="20">
+            <button id="username-submit">Join Chat</button>
+        </div>
+    </div>
+
     <input id="chat-message-input" type="text" size="30">
     <input id="chat-message-submit" type="button" value="Send">
     <div id="chat-log"></div>
 
     <script>
+        let username = '';
+        
+        // Username handling
+        document.querySelector('#username-submit').onclick = function() {
+            username = document.querySelector('#username-input').value.trim();
+            if (username) {
+                document.querySelector('#username-modal').classList.add('hidden');
+                document.querySelector('#chat-message-input').focus();
+            }
+        };
+
+        // Allow Enter key to submit username
+        document.querySelector('#username-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // Enter key
+                document.querySelector('#username-submit').click();
+            }
+        };
+
         const chatSocket = new WebSocket(
             'ws://' + window.location.host + '/ws/lobby/'
         );
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            document.querySelector('#chat-log').innerHTML += (data.message + '<br>');
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'chat-word';
+            wordSpan.textContent = data.message;
+            wordSpan.title = data.username;
+            document.querySelector('#chat-log').appendChild(wordSpan);
+            document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
         };
 
-        document.querySelector('#chat-message-input').focus();
         document.querySelector('#chat-message-input').onkeyup = function(e) {
             if (e.keyCode === 13) {  // Enter key
                 document.querySelector('#chat-message-submit').click();
@@ -28,19 +87,34 @@
 
         document.querySelector('#chat-message-submit').onclick = function(e) {
             const messageInputDom = document.querySelector('#chat-message-input');
-            const message = messageInputDom.value;
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            messageInputDom.value = ''; // Clear input field
+            const message = messageInputDom.value.trim();
+            
+            // Validate single word
+            if (message.includes(' ')) {
+                alert('Please enter only one word');
+                return;
+            }
+            
+            if (message && username) {
+                chatSocket.send(JSON.stringify({
+                    'message': message,
+                    'username': username
+                }));
+                messageInputDom.value = ''; // Clear input field
+            }
         };
 
-        // Fetch existing message on page load
+        // Fetch existing messages on page load
         fetch('/api/chat/messages/')
             .then(response => response.json())
             .then(data => {
                 data.messages.forEach(message => {
-                    document.querySelector('#chat-log').innerHTML += (message.content + '<br>');
+                    const wordSpan = document.createElement('span');
+                    wordSpan.className = 'chat-word';
+                    wordSpan.textContent = message.content;
+                    wordSpan.title = message.username;
+                    document.querySelector('#chat-log').appendChild(wordSpan);
+                    document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
                 });
             });
     </script>

@@ -10,3 +10,5 @@ chainstory/linkapp/migrations/__pycache__/
 *.sqlite3
 
 chainstory/linkapp/migrations/
+
+.DS_Store

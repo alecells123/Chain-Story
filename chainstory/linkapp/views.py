@@ -8,7 +8,7 @@ def lobby(request):
     return render(request, 'linkapp/lobby.html')
 
 def get_chat_messages(request):
-    messages = ChatMessage.objects.all().values('content')
+    messages = ChatMessage.objects.all().values('content', 'username')
     return JsonResponse({'messages': list(messages)})
 
 def reset(request):
