@@ -70,16 +70,43 @@
             margin-left: auto !important;
             margin-right: auto !important;
         }
+        /* Add modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: lightgrey;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+        }
     </style>
 </head>
 <body>
-    <div id="username-modal">
+    <!-- Simplified modal HTML -->
+    <div id="nameModal" class="modal">
         <div class="modal-content">
-            <h2>Enter your name</h2>
-            <input id="username-input" type="text" size="20">
-            <button id="username-submit">Join Chat</button>
+            <h5>Enter Your Name</h5>
+            <input type="text" id="nameInput" placeholder="Your name">
+            <input type="color" id="colorInput" value="#000000">
+            <button onclick="saveName()">Save</button>
         </div>
     </div>
+
+    <button id="changeNameBtn" onclick="showModal()">Change Name</button>
 
     <div class="input-container">
         <input id="chat-message-input" type="text" size="30">
@@ -89,23 +116,35 @@
     <div id="chat-log" class="chat-box"></div>
 
     <script>
-        let username = '';
+        let userName = '';
+        let userColor = '#000000';
+        const modal = document.getElementById('nameModal');
         
-        // Username handling
-        document.querySelector('#username-submit').onclick = function() {
-            username = document.querySelector('#username-input').value.trim();
-            if (username) {
-                document.querySelector('#username-modal').classList.add('hidden');
-                document.querySelector('#chat-message-input').focus();
-            }
-        };
+        function showModal() {
+            modal.classList.add('show');
+        }
 
-        // Allow Enter key to submit username
-        document.querySelector('#username-input').onkeyup = function(e) {
-            if (e.keyCode === 13) {  // Enter key
-                document.querySelector('#username-submit').click();
+        function saveName() {
+            const name = document.getElementById('nameInput').value;
+            const color = document.getElementById('colorInput').value;
+            if (name) {
+                localStorage.setItem('username', name);
+                localStorage.setItem('usercolor', color);
+                userName = name;
+                userColor = color;
+                modal.classList.remove('show');
             }
-        };
+        }
+
+        // Check for stored name immediately
+        const storedName = localStorage.getItem('username');
+        const storedColor = localStorage.getItem('usercolor');
+        if (!storedName) {
+            showModal();
+        } else {
+            userName = storedName;
+            userColor = storedColor;
+        }
 
         const chatSocket = new WebSocket(
             'ws://' + window.location.host + '/ws/lobby/'
@@ -113,12 +152,8 @@
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            const wordSpan = document.createElement('span');
-            wordSpan.className = 'chat-word';
-            wordSpan.textContent = data.message;
-            wordSpan.title = data.username;
-            document.querySelector('#chat-log').appendChild(wordSpan);
-            document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
+            document.querySelector('#chat-log').innerHTML += 
+                `<div><span style="color: ${data.color}">${data.name}</span>: ${data.message}</div>`;
         };
 
         document.querySelector('#chat-message-input').onkeyup = function(e) {
@@ -137,10 +172,11 @@
                 return;
             }
             
-            if (message && username) {
+            if (message && userName) {
                 chatSocket.send(JSON.stringify({
                     'message': message,
-                    'username': username
+                    'name': userName,
+                    'color': userColor
                 }));
                 messageInputDom.value = ''; // Clear input field
             }
@@ -151,14 +187,12 @@
             .then(response => response.json())
             .then(data => {
                 data.messages.forEach(message => {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.className = 'chat-word';
-                    wordSpan.textContent = message.content;
-                    wordSpan.title = message.username;
-                    document.querySelector('#chat-log').appendChild(wordSpan);
-                    document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
+                    const messageDiv = document.createElement('div');
+                    messageDiv.innerHTML = `<span style="color: ${message.color}">${message.user.username}</span>: ${message.content}`;
+                    document.querySelector('#chat-log').appendChild(messageDiv);
                 });
-            });
+            })
+            .catch(error => console.error('Error fetching messages:', error));
     </script>
 </body>
 </html>
