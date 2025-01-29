@@ -5,7 +5,7 @@
     <title>Lobby</title>
     <style>
         body {
-            background-color: #1a1a1a; /* Darker grey, almost black */
+            background-color:rgb(241, 241, 241);
             color: white;
             font-family: 'Ubuntu', sans-serif; /* Change font to Ubuntu */
         }
@@ -56,6 +56,20 @@
             cursor: pointer;
             vertical-align: middle;
         }
+        .chat-box {
+            width: 100%; /* Full width */
+            max-width: 500px; /* Limit max width */
+            height: auto; /* Allow height to adjust based on content */
+            padding: 10px; /* Add some padding */
+            border: 1px solid #ccc; /* Add a border */
+            border-radius: 5px; /* Rounded corners */
+            background-color: black; /* Background color */
+            overflow: visible; /* Allow content to overflow without scrolling */
+            margin: 20px auto; /* Center the box horizontally */
+            white-space: normal; /* Allow text to wrap */
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
     </style>
 </head>
 <body>
@@ -71,7 +85,8 @@
         <input id="chat-message-input" type="text" size="30">
         <button id="chat-message-submit" title="Send Message"></button>
     </div>
-    <div id="chat-log"></div>
+    
+    <div id="chat-log" class="chat-box"></div>
 
     <script>
         let username = '';

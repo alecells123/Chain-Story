@@ -12,3 +12,5 @@ chainstory/linkapp/migrations/__pycache__/
 chainstory/linkapp/migrations/
 
 .DS_Store
+
+chainstory/staticfiles/
