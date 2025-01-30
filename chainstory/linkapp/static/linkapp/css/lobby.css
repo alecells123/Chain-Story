@@ -78,16 +78,23 @@ body {
 }
 
 #chat-message-submit {
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin: 0 auto;
-    background: url("../images/send-icon.png") no-repeat center center;
-    background-size: contain;
+    background: none;
     width: 30px;
     height: 30px;
     border: none;
     cursor: pointer;
-    vertical-align: middle;
     transition: opacity 0.2s;
+    padding: 5px;
+}
+
+#chat-message-submit img {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
 }
 
 #chat-message-submit:hover {
@@ -185,4 +192,21 @@ body {
     padding: 0.5em 1em;
     border-radius: 4px;
     display: inline-block;
+}
+
+#reset-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    margin-right: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#reset-button img {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
 }

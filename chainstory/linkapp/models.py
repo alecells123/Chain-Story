@@ -13,11 +13,11 @@ class User(models.Model):
 class ChatMessage(models.Model):
     content = models.CharField(max_length=200)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    color = models.CharField(max_length=7, default="#000000")  # Store color at time of message
-    created_at = models.DateTimeField(auto_now_add=True)
+    color = models.CharField(max_length=7)  # Store color at time of message
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['created_at']
+        ordering = ['timestamp']
 
     def __str__(self):
         return f"{self.user.username}: {self.content}"

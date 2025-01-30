@@ -24,8 +24,13 @@
             <button id="changeNameBtn" class="button is-primary">Change Name</button>
         </div>
         <div class="input-container">
+            <button id="reset-button" class="button" title="Reset Chat">
+                <img src="{% static 'linkapp/images/reset-icon.png' %}" alt="Reset">
+            </button>
             <input id="chat-message-input" type="text" size="16" class="input">
-            <button id="chat-message-submit" title="Send Message"></button>
+            <button id="chat-message-submit" title="Send Message">
+                <img src="{% static 'linkapp/images/send-icon.png' %}" alt="Send">
+            </button>
         </div>
         
         <div id="chat-log" class="chat-box"></div>
@@ -78,10 +83,38 @@
             showModal();
         });
 
+        chatSocket.onopen = function(e) {
+            // Request initial messages through WebSocket
+            chatSocket.send(JSON.stringify({
+                'type': 'request_history',
+                'name': userName,
+                'color': userColor
+            }));
+        };
+
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             const chatLog = document.querySelector('#chat-log');
-            // Create a colored span for the word
+
+            if (data.type === 'reset') {
+                // Clear chat log for all connected clients
+                chatLog.innerHTML = '';
+                return;
+            }
+
+            if (data.type === 'history') {
+                // Handle initial message history
+                data.messages.forEach(message => {
+                    const wordSpan = document.createElement('span');
+                    wordSpan.style.color = message.color;
+                    wordSpan.textContent = message.content + ' ';
+                    chatLog.appendChild(wordSpan);
+                });
+                chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
+                return;
+            }
+
+            // Handle regular messages
             const wordSpan = document.createElement('span');
             wordSpan.style.color = data.color;
             wordSpan.textContent = data.message + ' ';
@@ -116,21 +149,51 @@
             }
         };
 
-        // Update the fetch messages code
-        fetch('/api/chat/messages/')
-            .then(response => response.json())
-            .then(data => {
-                const chatLog = document.querySelector('#chat-log');
-                data.messages.forEach(message => {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.style.color = message.color;
-                    wordSpan.textContent = message.content + ' ';
-                    chatLog.appendChild(wordSpan);
-                });
-                // Scroll to bottom after loading messages
-                chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
-            })
-            .catch(error => console.error('Error fetching messages:', error));
+        // Add this near the top of the script section with other variable declarations
+        const resetButton = document.getElementById('reset-button');
+
+        // Add this with the other event listeners
+        resetButton.onclick = function(e) {
+            if (confirm('Are you sure you want to reset the chat? This action cannot be undone.')) {
+                fetch('/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Only send the reset message through WebSocket
+                        // The server will broadcast it to all clients
+                        chatSocket.send(JSON.stringify({
+                            'type': 'reset',
+                            'name': userName,
+                            'color': userColor
+                        }));
+                    } else {
+                        console.error('Error resetting chat');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        };
+
+        // Add this helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
     </script>
 </body>
 </html>
