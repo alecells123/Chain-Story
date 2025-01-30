@@ -8,12 +8,11 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.10]
+        python-version: [3.10.4]
 
     steps:
     - uses: actions/checkout@v4
@@ -27,4 +26,5 @@ jobs:
         pip install -r requirements.txt
     - name: Run Tests
       run: |
+        cd chainstory
         python manage.py test
