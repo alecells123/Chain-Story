@@ -1,82 +1,127 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
     <title>Lobby</title>
-    <style>
-        #chat-log {
-            margin: 20px;
-            line-height: 1.6;
-        }
-        .chat-word {
-            display: inline-block;
-            margin: 0 5px;
-            cursor: pointer;
-        }
-        #username-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-        }
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="{% static 'linkapp/css/lobby.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="username-modal">
-        <div class="modal-content">
-            <h2>Enter your name</h2>
-            <input id="username-input" type="text" size="20">
-            <button id="username-submit">Join Chat</button>
+    <div class="container">
+        <!-- Modal -->
+        <div id="nameModal" class="modal">
+            <div class="modal-content">
+                <h5>Enter Your Name</h5>
+                <input type="text" id="nameInput" placeholder="Your name">
+                <input type="color" id="colorInput" value="#000000">
+                <button class="button is-primary" onclick="saveName()">Save</button>
+            </div>
         </div>
+
+        <div class="user-container">
+            <div id="currentUser" class="button is-static">You are: <span id="username-display"></span></div>
+            <button id="changeNameBtn" class="button is-primary">Change Name</button>
+        </div>
+        <div class="input-container">
+            <button id="reset-button" class="button" title="Reset Chat">
+                <img src="{% static 'linkapp/images/reset-icon.png' %}" alt="Reset">
+            </button>
+            <input id="chat-message-input" type="text" size="16" class="input">
+            <button id="chat-message-submit" title="Send Message">
+                <img src="{% static 'linkapp/images/send-icon.png' %}" alt="Send">
+            </button>
+        </div>
+        
+        <div id="chat-log" class="chat-box"></div>
     </div>
 
-    <input id="chat-message-input" type="text" size="30">
-    <input id="chat-message-submit" type="button" value="Send">
-    <div id="chat-log"></div>
-
     <script>
-        let username = '';
+        let userName = '';
+        let userColor = '#000000';
+        const modal = document.getElementById('nameModal');
         
-        // Username handling
-        document.querySelector('#username-submit').onclick = function() {
-            username = document.querySelector('#username-input').value.trim();
-            if (username) {
-                document.querySelector('#username-modal').classList.add('hidden');
-                document.querySelector('#chat-message-input').focus();
-            }
-        };
+        function showModal() {
+            modal.style.display = 'flex';
+            document.getElementById('nameInput').value = userName;
+            document.getElementById('colorInput').value = userColor;
+        }
 
-        // Allow Enter key to submit username
-        document.querySelector('#username-input').onkeyup = function(e) {
-            if (e.keyCode === 13) {  // Enter key
-                document.querySelector('#username-submit').click();
+        function saveName() {
+            const name = document.getElementById('nameInput').value;
+            const color = document.getElementById('colorInput').value;
+            if (name) {
+                localStorage.setItem('username', name);
+                localStorage.setItem('usercolor', color);
+                userName = name;
+                userColor = color;
+                document.getElementById('username-display').textContent = userName;
+                document.getElementById('username-display').style.color = userColor;
+                modal.style.display = 'none';
             }
-        };
+        }
+
+        // Check for stored name immediately
+        const storedName = localStorage.getItem('username');
+        const storedColor = localStorage.getItem('usercolor');
+        const usernameDisplay = document.getElementById('username-display');
+        if (!storedName) {
+            showModal();
+        } else {
+            userName = storedName;
+            userColor = storedColor;
+            usernameDisplay.style.color = userColor;
+            usernameDisplay.textContent = userName;
+        }
 
         const chatSocket = new WebSocket(
             'ws://' + window.location.host + '/ws/lobby/'
         );
 
+        // Add this event listener for the change name button
+        document.getElementById('changeNameBtn').addEventListener('click', function() {
+            showModal();
+        });
+
+        chatSocket.onopen = function(e) {
+            // Request initial messages through WebSocket
+            chatSocket.send(JSON.stringify({
+                'type': 'request_history',
+                'name': userName,
+                'color': userColor
+            }));
+        };
+
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
+            const chatLog = document.querySelector('#chat-log');
+
+            if (data.type === 'reset') {
+                // Clear chat log for all connected clients
+                chatLog.innerHTML = '';
+                return;
+            }
+
+            if (data.type === 'history') {
+                // Handle initial message history
+                data.messages.forEach(message => {
+                    const wordSpan = document.createElement('span');
+                    wordSpan.style.color = message.color;
+                    wordSpan.textContent = message.content + ' ';
+                    chatLog.appendChild(wordSpan);
+                });
+                chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
+                return;
+            }
+
+            // Handle regular messages
             const wordSpan = document.createElement('span');
-            wordSpan.className = 'chat-word';
-            wordSpan.textContent = data.message;
-            wordSpan.title = data.username;
-            document.querySelector('#chat-log').appendChild(wordSpan);
-            document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
+            wordSpan.style.color = data.color;
+            wordSpan.textContent = data.message + ' ';
+            chatLog.appendChild(wordSpan);
+            
+            // Scroll to bottom
+            chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
         };
 
         document.querySelector('#chat-message-input').onkeyup = function(e) {
@@ -91,32 +136,64 @@
             
             // Validate single word
             if (message.includes(' ')) {
-                alert('Please enter only one word');
                 return;
             }
             
-            if (message && username) {
+            if (message && userName) {
                 chatSocket.send(JSON.stringify({
                     'message': message,
-                    'username': username
+                    'name': userName,
+                    'color': userColor
                 }));
                 messageInputDom.value = ''; // Clear input field
             }
         };
 
-        // Fetch existing messages on page load
-        fetch('/api/chat/messages/')
-            .then(response => response.json())
-            .then(data => {
-                data.messages.forEach(message => {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.className = 'chat-word';
-                    wordSpan.textContent = message.content;
-                    wordSpan.title = message.username;
-                    document.querySelector('#chat-log').appendChild(wordSpan);
-                    document.querySelector('#chat-log').appendChild(document.createTextNode(' '));
-                });
-            });
+        // Add this near the top of the script section with other variable declarations
+        const resetButton = document.getElementById('reset-button');
+
+        // Add this with the other event listeners
+        resetButton.onclick = function(e) {
+            if (confirm('Are you sure you want to reset the chat? This action cannot be undone.')) {
+                fetch('/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Only send the reset message through WebSocket
+                        // The server will broadcast it to all clients
+                        chatSocket.send(JSON.stringify({
+                            'type': 'reset',
+                            'name': userName,
+                            'color': userColor
+                        }));
+                    } else {
+                        console.error('Error resetting chat');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        };
+
+        // Add this helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
     </script>
 </body>
 </html>

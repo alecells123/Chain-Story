@@ -1,57 +1,94 @@
-from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
 import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from .models import ChatMessage, User
+from django.urls import reverse
+from django.test import Client
 
-class MyConsumer(AsyncWebsocketConsumer):
+class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # Join the chat group
-        await self.channel_layer.group_add("chat", self.channel_name)
+        self.room_group_name = "chat"
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        
-        # Get messages using sync_to_async
-        from .models import ChatMessage  # Import here to avoid circular import
-        get_messages = sync_to_async(lambda: list(ChatMessage.objects.all()))
-        messages = await get_messages()
-        
-        # # Send existing messages
-        # for message in messages:
-        #     await self.send(text_data=json.dumps({
-        #         'message': message.content,
-        #         'username': message.username
-        #     }))
 
     async def disconnect(self, close_code):
-        # Leave the chat group
-        await self.channel_layer.group_discard("chat", self.channel_name)
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
-        from .models import ChatMessage
         text_data_json = json.loads(text_data)
+        message_type = text_data_json.get('type')
+
+        if message_type == 'reset':
+            # Broadcast reset message to all clients
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': '',
+                    'reset': True
+                }
+            )
+            return
+
+        if message_type == 'request_history':
+            # Send chat history
+            messages = await self.get_chat_history()
+            await self.send(text_data=json.dumps({
+                'type': 'history',
+                'messages': messages
+            }))
+            return
+
+        # Handle regular chat messages
         message = text_data_json['message']
-        username = text_data_json['username']
+        name = text_data_json['name']
+        color = text_data_json['color']
 
-        # Save message using sync_to_async
-        save_message = sync_to_async(ChatMessage.objects.create)
-        await save_message(content=message, username=username)
+        # Save message to database
+        await self.save_message(message, name, color)
 
-        # Send message to chat group
+        # Send message to room group
         await self.channel_layer.group_send(
-            "chat",
+            self.room_group_name,
             {
                 "type": "chat_message",
                 "message": message,
-                "username": username
+                "color": color
             }
         )
 
     async def chat_message(self, event):
-        message = event['message']
-        username = event['username']
-        await self.send(text_data=json.dumps({
-            'message': message,
-            'username': username
-        }))
+        # Send message to WebSocket
+        if event.get('reset'):
+            await self.send(text_data=json.dumps({
+                'type': 'reset'
+            }))
+            return
+        
+        await self.send(text_data=json.dumps(event))
 
-    async def get_chat_messages(self):
-        # Fetch chat messages from db
-        return await sync_to_async(ChatMessage.objects.all)()
+    @database_sync_to_async
+    def get_chat_history(self):
+        messages = ChatMessage.objects.select_related('user').all().order_by('timestamp')
+        return [{
+            'content': msg.content,
+            'color': msg.color,
+            'username': msg.user.username
+        } for msg in messages]
+
+    @database_sync_to_async
+    def save_message(self, message, name, color):
+        user, _ = User.objects.get_or_create(
+            username=name,
+            defaults={'color': color}
+        )
+        # Update color if it changed
+        if user.color != color:
+            user.color = color
+            user.save()
+        
+        return ChatMessage.objects.create(
+            content=message,
+            user=user,
+            color=color  # Store current color with message
+        )
