@@ -16,8 +16,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        
-        if text_data_json.get('type') == 'reset':
+        message_type = text_data_json.get('type')
+
+        if message_type == 'reset':
             # Broadcast reset message to all clients
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -28,9 +29,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             return
-        
-        # Handle different message types
-        message_type = text_data_json.get('type')
 
         if message_type == 'request_history':
             # Send chat history
