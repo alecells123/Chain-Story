@@ -4,5 +4,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chainstory.settings')
 import django
 django.setup()
 
-from chainstory.asgi import application
-app = application 
+from channels.routing import get_default_application
+application = get_default_application()
+app = application

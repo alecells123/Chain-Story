@@ -8,18 +8,22 @@ https://docs.djangoproject.com/en/4.0/howto/deployment/asgi/
 """
 
 import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chainstory.settings')
-
 import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chainstory.settings')
 django.setup()
 
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+
+django_asgi_app = get_asgi_application()
+
+# Import routing after Django is set up
 from linkapp.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
+    "http": django_asgi_app,
     "websocket": AuthMiddlewareStack(
         URLRouter(
             websocket_urlpatterns
